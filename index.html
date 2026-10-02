@@ -93,7 +93,7 @@ body{background:#000;display:flex;justify-content:center;align-items:center;font
 .partner .msg-header{order:0}
 .mini-avatar{width:38px;height:38px;border-radius:6px;overflow:hidden;background:#ddd;flex-shrink:0}
 .mini-avatar img{width:100%;height:100%;object-fit:cover;display:block}
-.bubble{position:relative;min-height:34px;padding:6px 12px;font-size:15px;line-height:1.4;word-break:break-word;border-radius:4px;display:flex;flex-direction:column;justify-content:center;background:#fff;color:#000;max-width:100%}
+.bubble{position:relative;min-height:34px;padding:6px 12px;font-size:14px;line-height:1.4;word-break:break-word;border-radius:4px;display:flex;flex-direction:column;justify-content:center;background:#fff;color:#000;max-width:100%}
 .self .bubble{background:var(--wx-bubble)}
 .partner .bubble{background:#fff}
 .bubble::after{content:'';position:absolute;top:12px;width:9px;height:9px;transform:rotate(45deg)}
@@ -522,6 +522,7 @@ input[type=range]::-webkit-slider-thumb{border:none;height:20px;width:20px;borde
         <div class="wx-cell"><span class="wx-cell-label">置顶聊天</span><label class="toggle-switch"><input type="checkbox" id="toggle-pinned"><span class="toggle-slider"></span></label></div>
         <div class="wx-cell"><span class="wx-cell-label">聊天背景</span><span class="wx-cell-inline-btn" id="cell-set-bg">设置</span><span class="wx-cell-inline-btn" id="cell-clear-bg">恢复</span></div>
         <div class="wx-cell"><span class="wx-cell-label">通知音效</span><span class="wx-cell-inline-btn" id="cell-set-sound">设置</span><span class="wx-cell-inline-btn" id="cell-clear-sound">恢复</span></div>
+        <div class="wx-cell"><span class="wx-cell-label">自定义字体</span><span class="wx-cell-inline-btn" id="cell-set-font">设置</span><span class="wx-cell-inline-btn" id="cell-clear-font">恢复</span></div>
         <div class="wx-cell" id="cell-clear-chat"><span class="wx-cell-label">清空聊天记录</span><div class="wx-cell-arrow"></div></div>
       </div>
       <div class="wx-section-title">回复节奏</div>
@@ -612,8 +613,12 @@ input[type=range]::-webkit-slider-thumb{border:none;height:20px;width:20px;borde
   </div>
 </div>
 
+<!-- ================= FONT (modal) ================= -->
+<div class="panel-overlay" id="font-panel-overlay" style="z-index:210;"><div class="panel-sheet"><div class="panel-sheet-header"><span class="panel-sheet-title">自定义字体</span><button class="panel-sheet-close" id="font-panel-close">×</button></div><div class="panel-sheet-body"><button class="wx-btn secondary" id="btn-font-upload">上传字体文件 (.woff2 / .ttf)</button><div class="wx-label" style="margin-top:12px;">或粘贴 CSS 链接 / @font-face 代码</div><textarea class="wx-textarea" id="font-css-input" rows="5" placeholder="例如：&#10;@font-face{font-family:'MyFont';src:url('https://example.com/font.woff2') format('woff2');}&#10;body{font-family:'MyFont',sans-serif;}"></textarea><button class="wx-btn" id="btn-font-apply">应用字体</button><button class="wx-btn secondary" id="btn-font-clear">恢复默认字体</button></div></div></div>
+
 <!-- file inputs -->
 <input type="file" id="bg-image-input" accept="image/*" style="display:none;">
+<input type="file" id="font-file-input" accept=".woff2,.ttf,.otf,.eot,.woff" style="display:none;">
 <input type="file" id="call-bg-upload" accept="image/*" style="display:none;">
 <input type="file" id="import-file-input" accept=".json" style="display:none;">
 <input type="file" id="import-words-file" accept=".json" style="display:none;">
@@ -625,7 +630,7 @@ input[type=range]::-webkit-slider-thumb{border:none;height:20px;width:20px;borde
 <script>
 (function(){
 /* ============ STATE ============ */
-let store={contacts:[],currentContactId:null,groups:[],words:[],emojis:['🌹','✨','🌙','💔','🔪','🥀','🖤','🤍','👀','💦'],stickers:[],globalSettings:{myName:'我',customCss:'',bgImage:'',myAvatar:'',callBg:'',pwaIcon:'',notificationSound:'',appName:'',pomodoro:{bgImage:'',bgVideo:'',task:'专注学习',durationMin:25,voiceCards:[],voiceInterval:5}}};
+let store={contacts:[],currentContactId:null,groups:[],words:[],emojis:['🌹','✨','🌙','💔','🔪','🥀','🖤','🤍','👀','💦'],stickers:[],globalSettings:{myName:'我',customCss:'',bgImage:'',myAvatar:'',callBg:'',pwaIcon:'',notificationSound:'',appName:'',customFont:'',pomodoro:{bgImage:'',bgVideo:'',task:'专注学习',durationMin:25,voiceCards:[],voiceInterval:5}}};
 let currentContact=null;
 let autoReplyTimer=null;
 let isContinuousMode=false;
@@ -655,7 +660,7 @@ let longPressTimer=null,longPressTarget=null;
 const PLACEHOLDER="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' fill='%23d0d0d0'/%3E%3C/svg%3E";
 
 /* ============ STORAGE ============ */
-function loadData(){let raw=localStorage.getItem('rose_chat_data');if(raw){try{store=JSON.parse(raw);}catch(e){}}if(!store.contacts)store.contacts=[];if(!store.groups)store.groups=[];if(!store.emojis)store.emojis=['🌹','✨','🌙','💔'];if(!store.stickers)store.stickers=[];if(!store.globalSettings)store.globalSettings={myName:'我',customCss:'',bgImage:'',myAvatar:'',callBg:'',pwaIcon:'',notificationSound:'',appName:'',pomodoro:{bgImage:'',bgVideo:'',task:'专注学习',durationMin:25,voiceCards:[],voiceInterval:5}};if(!store.globalSettings.pomodoro)store.globalSettings.pomodoro={bgImage:'',bgVideo:'',task:'专注学习',durationMin:25,voiceCards:[],voiceInterval:5};if(!store.globalSettings.pomodoro.voiceCards)store.globalSettings.pomodoro.voiceCards=[];if(!store.globalSettings.pomodoro.durationMin)store.globalSettings.pomodoro.durationMin=store.globalSettings.pomodoro.workMin||25;store.contacts.forEach(c=>{if(!c.settings)c.settings={minDelay:3,maxDelay:15,minCount:1,maxCount:3,autoMessage:true,autoInterval:10};if(!c.voiceCards)c.voiceCards=[];if(c.pinned===undefined)c.pinned=false;if(c.bgImage===undefined)c.bgImage='';if(c.callBg===undefined)c.callBg='';});}
+function loadData(){let raw=localStorage.getItem('rose_chat_data');if(raw){try{store=JSON.parse(raw);}catch(e){}}if(!store.contacts)store.contacts=[];if(!store.groups)store.groups=[];if(!store.emojis)store.emojis=['🌹','✨','🌙','💔'];if(!store.stickers)store.stickers=[];if(!store.globalSettings)store.globalSettings={myName:'我',customCss:'',bgImage:'',myAvatar:'',callBg:'',pwaIcon:'',notificationSound:'',appName:'',customFont:'',pomodoro:{bgImage:'',bgVideo:'',task:'专注学习',durationMin:25,voiceCards:[],voiceInterval:5}};if(!store.globalSettings.pomodoro)store.globalSettings.pomodoro={bgImage:'',bgVideo:'',task:'专注学习',durationMin:25,voiceCards:[],voiceInterval:5};if(!store.globalSettings.pomodoro.voiceCards)store.globalSettings.pomodoro.voiceCards=[];if(!store.globalSettings.pomodoro.durationMin)store.globalSettings.pomodoro.durationMin=store.globalSettings.pomodoro.workMin||25;store.contacts.forEach(c=>{if(!c.settings)c.settings={minDelay:3,maxDelay:15,minCount:1,maxCount:3,autoMessage:true,autoInterval:10};if(!c.voiceCards)c.voiceCards=[];if(c.pinned===undefined)c.pinned=false;if(c.bgImage===undefined)c.bgImage='';if(c.callBg===undefined)c.callBg='';});}
 function saveData(){try{localStorage.setItem('rose_chat_data',JSON.stringify(store));}catch(e){toast('保存失败，可能图片/视频太多内存满了！');}}
 
 /* ============ UTILS ============ */
@@ -698,7 +703,12 @@ function updatePWAIcon(){let pv=document.getElementById('pwa-preview');if(pv)pv.
 function ensureContact(){if(store.contacts.length===0){let c={id:'c_'+Date.now(),name:'玫瑰',avatar:'',history:[],callBg:'',bgImage:'',pinned:false,voiceCards:[],settings:{minDelay:3,maxDelay:15,minCount:1,maxCount:3,autoMessage:true,autoInterval:10}};store.contacts.push(c);store.currentContactId=c.id;}if(!store.currentContactId||!store.contacts.find(c=>c.id===store.currentContactId))store.currentContactId=store.contacts[0].id;currentContact=store.contacts.find(c=>c.id===store.currentContactId);saveData();}
 
 function applyChatBackground(){let bg=document.getElementById('chat-bg-img');let c=currentContact;if(c&&c.bgImage){bg.src=c.bgImage;bg.style.display='block';}else{bg.style.display='none';}}
-function applyGlobalSettings(){document.getElementById('me-name').textContent=store.globalSettings.myName||'我';document.getElementById('me-avatar-img').src=store.globalSettings.myAvatar||PLACEHOLDER;document.getElementById('set-my-name').value=store.globalSettings.myName||'我';document.getElementById('set-app-name').value=store.globalSettings.appName||'';document.getElementById('cs-my-avatar-img').src=store.globalSettings.myAvatar||PLACEHOLDER;document.getElementById('cs-my-name-label').textContent=store.globalSettings.myName||'我';let style=document.getElementById('dynamic-css');if(!style){style=document.createElement('style');style.id='dynamic-css';document.head.appendChild(style);}style.innerHTML=store.globalSettings.customCss||'';document.getElementById('custom-css').value=store.globalSettings.customCss||'';applyChatBackground();updatePWAIcon();updateAppName();}
+function applyGlobalSettings(){document.getElementById('me-name').textContent=store.globalSettings.myName||'我';document.getElementById('me-avatar-img').src=store.globalSettings.myAvatar||PLACEHOLDER;document.getElementById('set-my-name').value=store.globalSettings.myName||'我';document.getElementById('set-app-name').value=store.globalSettings.appName||'';document.getElementById('cs-my-avatar-img').src=store.globalSettings.myAvatar||PLACEHOLDER;document.getElementById('cs-my-name-label').textContent=store.globalSettings.myName||'我';let style=document.getElementById('dynamic-css');if(!style){style=document.createElement('style');style.id='dynamic-css';document.head.appendChild(style);}style.innerHTML=store.globalSettings.customCss||'';document.getElementById('custom-css').value=store.globalSettings.customCss||'';applyChatBackground();applyCustomFont();updatePWAIcon();updateAppName();}
+function buildFontCss(src,format){let fmt=format?` format('${format}')`:'';return `@font-face{font-family:'CustomFont';src:url("${src}")${fmt};}body{font-family:'CustomFont',-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif !important;}`;}
+function applyCustomFont(){let el=document.getElementById('custom-font-css');if(!el){el=document.createElement('style');el.id='custom-font-css';document.head.appendChild(el);}el.innerHTML=store.globalSettings.customFont||'';}
+function clearCustomFont(){store.globalSettings.customFont='';saveData();applyCustomFont();toast('已恢复默认字体');}
+function detectFontFormat(name){name=(name||'').toLowerCase();if(name.endsWith('.woff2'))return 'woff2';if(name.endsWith('.woff'))return 'woff';if(name.endsWith('.ttf'))return 'truetype';if(name.endsWith('.otf'))return 'opentype';if(name.endsWith('.eot'))return 'embedded-opentype';return '';}
+function applyFontCssInput(){let val=document.getElementById('font-css-input').value.trim();if(!val){toast('请粘贴CSS或链接');return;}let css=val;if(val.indexOf('{')<0&&val.indexOf('@import')<0){css=buildFontCss(val);}store.globalSettings.customFont=css;saveData();applyCustomFont();toggleOverlay('font-panel-overlay',false);toast('字体已应用');}
 
 function applyContactSettings(){if(!currentContact)return;document.getElementById('chat-title').textContent=currentContact.name;document.getElementById('set-partner-name').value=currentContact.name;document.getElementById('cs-partner-name-label').textContent=currentContact.name;document.getElementById('cs-partner-avatar-img').src=currentContact.avatar||PLACEHOLDER;document.getElementById('toggle-pinned').checked=!!currentContact.pinned;let s=currentContact.settings;document.getElementById('slider-min-delay').value=s.minDelay||3;document.getElementById('slider-min-delay-value').textContent=s.minDelay||3;document.getElementById('slider-max-delay').value=s.maxDelay||15;document.getElementById('slider-max-delay-value').textContent=s.maxDelay||15;document.getElementById('slider-min-count').value=s.minCount||1;document.getElementById('slider-min-count-value').textContent=s.minCount||1;document.getElementById('slider-max-count').value=s.maxCount||3;document.getElementById('slider-max-count-value').textContent=s.maxCount||3;document.getElementById('toggle-auto-message').checked=s.autoMessage!==false;document.getElementById('slider-auto-interval').value=s.autoInterval||10;document.getElementById('slider-auto-interval-value').textContent=s.autoInterval||10;applyChatBackground();}
 
@@ -904,6 +914,14 @@ document.getElementById('cell-clear-bg').onclick=()=>{currentContact.bgImage='';
 document.getElementById('cell-set-sound').onclick=()=>document.getElementById('notification-sound-upload').click();
 document.getElementById('notification-sound-upload').onchange=e=>{let f=e.target.files[0];if(!f)return;compressAudio(f,res=>{store.globalSettings.notificationSound=res;saveData();applyGlobalSettings();toast('通知铃声已更新');});e.target.value='';};
 document.getElementById('cell-clear-sound').onclick=()=>{store.globalSettings.notificationSound='';saveData();toast('已恢复默认音效');};
+/* custom font */
+document.getElementById('cell-set-font').onclick=()=>{document.getElementById('font-css-input').value=store.globalSettings.customFont||'';toggleOverlay('font-panel-overlay',true);};
+document.getElementById('cell-clear-font').onclick=()=>{clearCustomFont();};
+document.getElementById('font-panel-close').onclick=()=>toggleOverlay('font-panel-overlay',false);
+document.getElementById('btn-font-upload').onclick=()=>document.getElementById('font-file-input').click();
+document.getElementById('btn-font-apply').onclick=applyFontCssInput;
+document.getElementById('btn-font-clear').onclick=()=>{clearCustomFont();toggleOverlay('font-panel-overlay',false);};
+document.getElementById('font-file-input').onchange=e=>{let f=e.target.files[0];if(!f)return;if(f.size>3*1024*1024&&!confirm('字体文件较大（'+Math.round(f.size/1024/1024)+'MB），保存可能失败，仍要上传吗？')){e.target.value='';return;}let r=new FileReader();r.onload=ev=>{store.globalSettings.customFont=buildFontCss(ev.target.result,detectFontFormat(f.name));saveData();applyCustomFont();toggleOverlay('font-panel-overlay',false);toast('字体已上传并应用');};r.readAsDataURL(f);e.target.value='';};
 document.getElementById('cell-clear-chat').onclick=()=>{if(confirm('清空当前聊天记录？')){currentContact.history=[];saveData();renderChat();toast('记录已清空');}};
 document.getElementById('toggle-pinned').onchange=function(){if(!currentContact)return;currentContact.pinned=this.checked;saveData();renderConversationList();toast(this.checked?'已置顶':'已取消置顶');};
 document.querySelectorAll('input[type=range]').forEach(s=>s.addEventListener('input',e=>{let span=document.getElementById(e.target.id+'-value');if(span)span.textContent=e.target.value;}));
